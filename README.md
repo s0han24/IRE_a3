@@ -1,5 +1,7 @@
 # annbench: benchmarking approximate nearest neighbour search
 
+This repository is mostly for experimental verification and is written completely using Claude Opus 5.5. However, every line has been reviewed for correctness and TDD was followed. Further, the agent produces all plans based on the specifications in SPEC.md and then implements them. `AI_LOGS/` contains all the AI generated artifacts along with `SPEC.md`.
+
 Benchmarks ANN search on SIFT-1M and GloVe-100 from
 [ann-benchmarks](https://github.com/erikbern/ann-benchmarks), against an exact FAISS baseline.
 
