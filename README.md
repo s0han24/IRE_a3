@@ -7,12 +7,21 @@ Benchmarks ANN search on SIFT-1M and GloVe-100 from
 
 ## Experiments
 
-The hypothesis below was written down before any ANN experiment was implemented or run
-(copied verbatim from the spec).
+Each hypothesis was written down before its experiments were implemented or run (copied
+verbatim from the spec).
+
+**Standard data** (scaling on SIFT):
 
 ### Hypothesis
 1. exact search should have the worst scaling of the 3, the qps increases linearly with number of vectors but the recall saturates giving a exponential-looking increase in qps against the recall
 2. HNSW and IVF-Flat should have better scaling than exact search, HNSW should perform better than IVF-Flat given the right hyperparameters, though it may perform worse on certain configs. 
+
+**Drifted data** (mean shift and rotation on SIFT):
+
+### Hypothesis
+1. Two metrics are calculated, one is recall against the ground truth and recall against exact search. All indexes are expected to show some degradation against the ground truth but still show similar recall against the exact search.
+2. QPS is measured too, this is expected to show no changes at all.
+3. IVF-PQ is expected to show the greatest degradation and IVF-Flat the least because for well separated clusters, the drift may not affect step 1 which decides the cluster in which a query lands. Step 2 however will be affected by drift because of the brittle quantization. IVF-Flat for well separated clusters should show similar degradation behaviour to exact search.
 
 ## Setup
 

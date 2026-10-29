@@ -1,6 +1,6 @@
 # Progress
 
-Spec read up to: line 36
+Spec read up to: line 64
 
 Agents update this after each GREEN or REFACTOR step and after each confirmed spec update.
 Status: todo / in progress / done / superseded (keep superseded rows; don't delete them).
@@ -22,3 +22,5 @@ Status: todo / in progress / done / superseded (keep superseded rows; don't dele
 | "Benchmarks:" (22, inserted 2026-10-29): repeat each timing, take the median | in progress | time_batch / time_one_at_a_time repeats + median (tested); REPEATS=3 wired into all 3 scripts; results not yet re-run |
 | "Experiments on standard data:" (36, original): best few hyperparameter configs | superseded | line 36 edited 2026-10-29 |
 | "Experiments on standard data:" (36): all hyperparameter configs (HNSW, IVF-Flat, exact) | done | compute_scaling uses every HNSW / IVF-Flat build (TOP_N removed); data in results/full/scaling.json already covers all 4 builds |
+| "Experiments on drifted data:" (38-45): hypothesis in README, committed first | in progress | added verbatim 2026-10-29; commit next |
+| "Experiments on drifted data:" (47-64): mean shift / rotation, stale + rebuilt, two recalls, plots + tables, run_all + --quick | todo | plan 2026-10-29-drift.md |

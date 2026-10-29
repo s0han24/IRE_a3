@@ -34,3 +34,31 @@ Before implementing and running the following, commit the following hypothesis t
 ```
 
 On SIFT, repeat the benchmark at 100k, 300k, 1M vectors and see how the cost of reaching recall 0.95 grows for HNSW, IVF-Flat and exact search for all the hyperparameter configs from the previous section.
+
+## Experiments on drifted data:
+Before implementing and running the following, commit the following hypothesis to the README:
+```
+### Hypothesis
+1. Two metrics are calculated, one is recall against the ground truth and recall against exact search. All indexes are expected to show some degradation against the ground truth but still show similar recall against the exact search.
+2. QPS is measured too, this is expected to show no changes at all.
+3. IVF-PQ is expected to show the greatest degradation and IVF-Flat the least because for well separated clusters, the drift may not affect step 1 which decides the cluster in which a query lands. Step 2 however will be affected by drift because of the brittle quantization. IVF-Flat for well separated clusters should show similar degradation behaviour to exact search.
+```
+
+Simulate a change in preprocessing that the index was not rebuilt for, and see which index degrades first and whether rebuilding recovers it.
+- SIFT only, both query halves used as before (tune / report)
+- Two kinds of drift, each a separate experiment. Never apply both together. Check this out for the 3 separate configurations mentioned for each drift:
+    1. Mean shift: add the constant c = 5, 10, 15 to every coordinate of every vector. No scaling, no normalisation
+    2. Rotation: pair up the dimensions (0,1), (2,3), ... and rotate each pair by 2,3,5 degrees, similar to RoPE
+- For each kind of drift, run two conditions:
+    1. stale: index built on the original base vectors, queries transformed
+    2. rebuilt: base vectors and queries transformed the same way, index rebuilt from scratch
+- For every condition run the full hyperparameter sweep from the Benchmarks section (HNSW, IVF-Flat, IVF-PQ, plus exact search)
+- For every config report two recalls:
+    1. recall against the exact neighbours of the transformed query in the base the index was built on
+    2. recall against the exact neighbours of the original query in the original base
+- Also report QPS (median of repeats), build time, index size and bytes per vector for every config, as in the Benchmarks section
+- Report for each kind of drift:
+    1. a recall@10 vs qps plot with the clean, stale and rebuilt curves for each index
+    2. a table of every config with all the numbers above
+    3. a table of the recall drop per config (stale minus clean, rebuilt minus clean) and which index loses its 0.95 config first
+- Add to run_all.sh, including the --quick mode

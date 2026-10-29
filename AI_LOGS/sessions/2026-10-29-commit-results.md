@@ -181,3 +181,15 @@
 - Prompt: "commit this now"
 - Summary: committed all pending changes (code, tests, human's SPEC.md edits, full + quick
   results with 3 repeats, README, AI_LOGS). data/ stays ignored.
+- Outcome: committed as 0c968a4.
+
+## 2026-10-29 — SPEC UPDATE (lines 37-64 appended: "Experiments on drifted data:"), no code
+
+- Prompt: "check out the SPECs now"
+- Spec: 36 -> 64 lines (md5 f95e682d...), appended at the bottom.
+- Files touched: this log only
+- Summary: reported SPEC UPDATE with questions (which recall decides "loses 0.95 first",
+  rotation angle per pair, clean curve re-measured in same run, --quick budget, stale build
+  numbers, README hypothesis vs lean README). Noted: both drifts are distance-preserving
+  when applied to base and queries, so "rebuilt" should reproduce "clean" up to float effects.
+- Status: awaiting human confirmation
