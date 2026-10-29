@@ -10,31 +10,39 @@ def time_batch(
     search_fn: Callable[[NDArray[np.floating]], object],
     queries: NDArray[np.floating],
     clock: Callable[[], float],
+    repeats: int = 1,
 ) -> float:
-    """Seconds for one search_fn call on all queries at once.
+    """Seconds for one search_fn call on all queries at once; median of `repeats` calls.
 
     queries: (nq, d) float32. clock: e.g. time.perf_counter, injectable for tests.
     """
-    t0 = clock()
-    search_fn(queries)
-    return clock() - t0
+    times = []
+    for _ in range(repeats):
+        t0 = clock()
+        search_fn(queries)
+        times.append(clock() - t0)
+    return float(np.median(times))
 
 
 def time_one_at_a_time(
     search_fn: Callable[[NDArray[np.floating]], object],
     queries: NDArray[np.floating],
     clock: Callable[[], float],
+    repeats: int = 1,
 ) -> NDArray[np.float64]:
     """Per-query latency in seconds, searching one (1, d) query at a time.
 
+    The whole pass over queries is run `repeats` times; each query's latency is the
+    median of its `repeats` measurements.
     queries: (nq, d) float32. Returns (nq,) float64.
     """
-    latencies = np.empty(queries.shape[0])
-    for i in range(queries.shape[0]):
-        t0 = clock()
-        search_fn(queries[i : i + 1])
-        latencies[i] = clock() - t0
-    return latencies
+    latencies = np.empty((repeats, queries.shape[0]))
+    for r in range(repeats):
+        for i in range(queries.shape[0]):
+            t0 = clock()
+            search_fn(queries[i : i + 1])
+            latencies[r, i] = clock() - t0
+    return np.median(latencies, axis=0)
 
 
 @contextmanager

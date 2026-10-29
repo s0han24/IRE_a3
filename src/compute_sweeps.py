@@ -30,7 +30,7 @@ from annbench.recall import recall_at_k
 from annbench.results_io import run_meta, save_results
 from annbench.sweeps import best_at_recall
 from annbench.timing import faiss_threads, time_build, time_one_at_a_time
-from compute_baseline import DATASETS, QUICK_N, fetch
+from compute_baseline import DATASETS, QUICK_N, REPEATS, fetch
 
 K = 10
 K_SEARCH = 20
@@ -117,7 +117,7 @@ def main() -> None:
                 search = partial(wrapper.search, k=K_SEARCH)
                 with faiss_threads(1):
                     search(report[:1])  # untimed warm-up
-                    lat = time_one_at_a_time(search, report, perf_counter)
+                    lat = time_one_at_a_time(search, report, perf_counter, REPEATS)
                 rec = {
                     "dataset": name,
                     "index": index,
@@ -154,6 +154,7 @@ def main() -> None:
         params = {
             "k": K,
             "k_search": K_SEARCH,
+            "timing_repeats": REPEATS,
             "single_query_threads": 1,
             "quick": args.quick,
             "quick_n": QUICK_N,

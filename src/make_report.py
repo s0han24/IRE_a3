@@ -56,7 +56,7 @@ def exact_points(records: list[dict]) -> list[dict]:
 
 
 def plot_recall_vs_qps(sweep: list[dict], exact: list[dict], out_path: Path) -> None:
-    """Per dataset: the best build (by tune-recall curve area) of each index + exact."""
+    """Per dataset: every build of each index (best tune-recall area solid) + exact."""
     datasets = sorted({r["dataset"] for r in sweep})
     fig, axes = plt.subplots(
         1, len(datasets), figsize=(6 * len(datasets), 4.2), dpi=150
@@ -66,21 +66,25 @@ def plot_recall_vs_qps(sweep: list[dict], exact: list[dict], out_path: Path) -> 
             mine = [r for r in sweep if r["dataset"] == dataset and r["index"] == index]
             if not mine:
                 continue
-            best = top_build_configs(points(mine, "tune_recall"), 1)[0]
-            curve = sorted(
-                (p for p in points(mine) if p["build"] == best),
-                key=lambda p: p["search_value"],
-            )
+            builds = {r["build"] for r in mine}
+            ranked = top_build_configs(points(mine, "tune_recall"), len(builds))
             color, marker = STYLE[index]
-            ax.plot(
-                [p["qps"] for p in curve],
-                [p["recall"] for p in curve],
-                color=color,
-                marker=marker,
-                markersize=5,
-                linewidth=2,
-                label=best,
-            )
+            for rank, build in enumerate(ranked):  # best by curve area drawn strongest
+                curve = sorted(
+                    (p for p in points(mine) if p["build"] == build),
+                    key=lambda p: p["search_value"],
+                )
+                ax.plot(
+                    [p["qps"] for p in curve],
+                    [p["recall"] for p in curve],
+                    color=color,
+                    marker=marker,
+                    markersize=5 if rank == 0 else 3.5,
+                    linewidth=2 if rank == 0 else 1.2,
+                    linestyle="-" if rank == 0 else "--",
+                    alpha=1.0 if rank == 0 else 0.6,
+                    label=build + (" (best area)" if rank == 0 else ""),
+                )
         for p in exact:
             if p["dataset"] == dataset:
                 color, marker = STYLE["exact"]

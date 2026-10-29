@@ -3,12 +3,13 @@
 Wiring only. Needs results/<mode>/sweeps.json and baseline_1thread.json first.
 Usage: uv run python src/compute_scaling.py [--quick]
 
-For HNSW and IVF-Flat, the 3 best build configs by curve area (on tuning-query recall)
-from the sweep are re-run at each base size (full: 100k / 300k / 1M; quick: 100k), with
-their whole search-parameter sweep, so the report can pick the cheapest config reaching
-recall 0.95 at each size. IVF nlist follows round(c * sqrt(n)). Exact search (1 thread,
-k' = 20) is timed at each size. Measurements that already exist at a size (the sweep's
-own base size, the 1-thread baseline) are reused rather than repeated.
+Every HNSW and IVF-Flat build config from the sweep (spec line 36: all configs) is
+re-run at each base size (full: 100k / 300k / 1M; quick: 100k), with its whole
+search-parameter sweep, so the report can pick the cheapest config reaching recall 0.95
+at each size. IVF nlist follows round(c * sqrt(n)). Exact search (1 thread, k' = 20) is
+timed at each size. Every single-query timing is the per-query median of REPEATS passes.
+Measurements that already exist at a size (the sweep's own base size, the 1-thread
+baseline) are reused rather than repeated.
 """
 
 import argparse
@@ -28,14 +29,12 @@ from annbench.exact import FaissExact
 from annbench.indexes import FaissHNSW, FaissIVFFlat, index_size_bytes
 from annbench.recall import recall_at_k
 from annbench.results_io import load_results, run_meta, save_results
-from annbench.sweeps import points, top_build_configs
 from annbench.timing import faiss_threads, time_build, time_one_at_a_time
-from compute_baseline import fetch
+from compute_baseline import REPEATS, fetch
 
 DATASET = "sift-128-euclidean"
 K = 10
 K_SEARCH = 20
-TOP_N = 3
 
 
 def make_wrapper(index: str, params: dict, n: int) -> FaissHNSW | FaissIVFFlat:
@@ -54,7 +53,7 @@ def single_query_latencies(search, report):
     """Report queries one at a time on 1 FAISS thread, after an untimed warm-up."""
     with faiss_threads(1):
         search(report[:1])
-        return time_one_at_a_time(search, report, perf_counter)
+        return time_one_at_a_time(search, report, perf_counter, REPEATS)
 
 
 def main() -> None:
@@ -74,11 +73,10 @@ def main() -> None:
         for r in load_results(out_dir / "baseline_1thread.json")[0]
         if r["dataset"] == DATASET
     ]
-    chosen = {}  # build label -> sweep records of that build
-    for index in ("hnsw", "ivf_flat"):
-        mine = [r for r in sweep if r["index"] == index]
-        for label in top_build_configs(points(mine, "tune_recall"), TOP_N):
-            chosen[label] = [r for r in mine if r["build"] == label]
+    chosen = {}  # build label -> its sweep records; all builds (spec line 36)
+    for r in sweep:
+        if r["index"] in ("hnsw", "ivf_flat"):
+            chosen.setdefault(r["build"], []).append(r)
     print("scaling configs:", ", ".join(chosen))
 
     data = prepare_vectors(DATASET, load_hdf5(download(DATASET, args.data_dir, fetch)))
@@ -89,7 +87,7 @@ def main() -> None:
             "k_search": K_SEARCH,
             "single_query_threads": 1,
             "sizes": sizes,
-            "top_n": TOP_N,
+            "timing_repeats": REPEATS,
             "configs": list(chosen),
         }
     )

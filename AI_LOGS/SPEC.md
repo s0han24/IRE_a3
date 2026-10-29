@@ -19,6 +19,7 @@ One-command reproduction: running `bash run_all.sh` inside src/ must regenerate 
 - The objective is to benchmark HNSW, IVF-Flat and IVF-PQ on both datasets.
 - Try various settings and do a parameter sweep for a comprehensive benchmark
 - At least one parameter config in each sweep should get a recall of 95% or higher. If such a config is elusive, flag it.
+- Repeat each timing a few times and take the median
 - The following need to be reported:
     1. a plot of per dataset recall@10 against qps showing the tradeoff for each index and the exact baseline from before
     2. A table of queries per second each index achieves at recall 0.9 and 0.95 (need not be programmatic, can be inferred manually, make sure the data is there though)
@@ -32,4 +33,4 @@ Before implementing and running the following, commit the following hypothesis t
 2. HNSW and IVF-Flat should have better scaling than exact search, HNSW should perform better than IVF-Flat given the right hyperparameters, though it may perform worse on certain configs. 
 ```
 
-On SIFT, repeat the benchmark at 100k, 300k, 1M vectors and see how the cost of reaching recall 0.95 grows for HNSW, IVF-Flat and exact search for the best few hyperparameter configs from the previous section.
+On SIFT, repeat the benchmark at 100k, 300k, 1M vectors and see how the cost of reaching recall 0.95 grows for HNSW, IVF-Flat and exact search for all the hyperparameter configs from the previous section.

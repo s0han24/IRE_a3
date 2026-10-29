@@ -27,6 +27,7 @@ from annbench.timing import faiss_threads, time_batch, time_one_at_a_time
 DATASETS = ("sift-128-euclidean", "glove-100-angular")
 K = 10
 QUICK_N = 100_000
+REPEATS = 3  # every timing is the median of this many runs (spec line 22)
 
 
 def fetch(url: str, dest: Path) -> None:
@@ -62,9 +63,9 @@ def main() -> None:
 
         search = partial(index.search, k=args.k_search)
         search(report[:1])  # untimed warm-up: page faults, thread pool start
-        batch_seconds = time_batch(search, report, perf_counter)
+        batch_seconds = time_batch(search, report, perf_counter, REPEATS)
         with faiss_threads(args.threads) if args.threads else nullcontext():
-            latencies = time_one_at_a_time(search, report, perf_counter)
+            latencies = time_one_at_a_time(search, report, perf_counter, REPEATS)
         records.append(
             {
                 "dataset": name,
@@ -87,6 +88,7 @@ def main() -> None:
         "k": K,
         "k_search": args.k_search,
         "single_query_threads": args.threads,
+        "timing_repeats": REPEATS,
         "quick": args.quick,
         "quick_n": QUICK_N,
         "datasets": DATASETS,

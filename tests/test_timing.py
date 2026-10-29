@@ -22,6 +22,18 @@ def test_time_batch_calls_search_once_on_all_queries_and_returns_clock_delta():
     assert elapsed == pytest.approx(2.5)
 
 
+def test_time_batch_repeats_and_takes_median():
+    queries = np.zeros((4, 2), dtype=np.float32)
+    calls = []
+    # batch times 4, 1, 2 -> median 2 (mean would be 2.33, first call 4)
+    clock = iter([0.0, 4.0, 4.0, 5.0, 5.0, 7.0]).__next__
+
+    elapsed = time_batch(calls.append, queries, clock, repeats=3)
+
+    assert len(calls) == 3 and all(c is queries for c in calls)
+    assert elapsed == pytest.approx(2.0)
+
+
 def test_time_one_at_a_time_calls_search_per_query_and_returns_latencies():
     queries = np.arange(6, dtype=np.float32).reshape(3, 2)
     calls = []
@@ -33,6 +45,20 @@ def test_time_one_at_a_time_calls_search_per_query_and_returns_latencies():
     for i, call in enumerate(calls):
         np.testing.assert_array_equal(call, queries[i : i + 1])  # (1, d) slice
     np.testing.assert_allclose(latencies, [1.0, 2.0, 3.0])
+
+
+def test_time_one_at_a_time_repeats_passes_and_takes_per_query_median():
+    queries = np.arange(4, dtype=np.float32).reshape(2, 2)
+    calls = []
+    # 3 passes over 2 queries; deltas q0: 1, 5, 2 -> median 2; q1: 4, 3, 9 -> median 4
+    deltas = [1, 4, 5, 3, 2, 9]
+    readings = np.cumsum([0] + [x for d in deltas for x in (d, 0)])[:-1]
+    clock = iter(readings.tolist()).__next__
+
+    latencies = time_one_at_a_time(calls.append, queries, clock, repeats=3)
+
+    assert len(calls) == 6  # every query searched once per pass
+    np.testing.assert_allclose(latencies, [2.0, 4.0])
 
 
 def test_faiss_threads_sets_count_and_restores_it_even_on_error():

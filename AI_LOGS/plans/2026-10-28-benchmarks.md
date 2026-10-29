@@ -114,3 +114,16 @@ have exact tests anyway, just give me the code at once"): tables (qps_at_recall,
 build_cost, scaling) + sweeps.points without unit tests; compute_scaling.py; plots in
 make_report.py; run_all.sh stage 1 extended; README updated. Verified on --quick data only.
 Full sweep + full scaling NOT run (human: "don't run the full sweep for now").
+
+## Addendum 2026-10-29: spec lines 22 (median of repeats) and 36 (all configs)
+Decisions (human: "your recommendations are fine"): r = 3 repeats; single-query timing =
+per-query median latency over r full passes; batch = median of r batch times; build time
+measured once (documented); exact baseline timings also use r; JSON stores medians + r.
+25. RED/GREEN: time_one_at_a_time(..., repeats) -> per-query median over repeats passes.
+26. RED/GREEN: time_batch(..., repeats) -> median of repeats batch times.
+27. WIRING: repeats=3 in compute_baseline / compute_sweeps / compute_scaling, r in meta;
+    compute_scaling uses every HNSW and IVF-Flat build (TOP_N dropped).
+28. WIRING: recall_vs_qps plot draws every build (best emphasised) so table configs appear.
+29. README: medians, all-configs scaling, stale runtime + thread-count passages, results
+    section vs hypothesis (after the re-run). PROGRESS refresh.
+30. RUN (ask first): run_all.sh --quick timed; then full; then commit results.
