@@ -59,7 +59,8 @@ Status: approved 2026-10-28 (human: "2 and 3 seem fine", nlist option B). Spec r
    RED: no-ties case.
 4. A found id beyond position k, tied with the k-th found distance and in GT top-k, is a hit
    (the 0.1 0.2 0.2 0.2 example).
-5. Float-noise tie on the found side (rtol) still extends the set; a real gap does not.
+5. ~~Float-noise tie on the found side (rtol) still extends the set; a real gap does not.~~
+   Covered by the rewritten test_recall_at_k_float_noise_at_kth_is_hit (human: "ok").
 
 ### C. Index wrappers (spec line 19), one per cycle, property tests on rng data
    (n=1000, d=16, seed fixed): shape (nq, k), ids in range, no duplicates, recall >= 0.9
@@ -74,9 +75,17 @@ Status: approved 2026-10-28 (human: "2 and 3 seem fine", nlist option B). Spec r
 11. `time_build(build_fn, clock)` with fake clock.
 
 ### E. Sweep analysis (pure functions, hand-made records)
-12. `pareto_front(points)` on (recall, qps).
-13. `best_at_recall(records, target)` -> best record or None (flag).
-14. `top_configs(records, target, n)` for the scaling experiment.
+   (Revised 2026-10-28, human: "just estimate area under the tradeoff curve and take the
+   best few according to that"; replaces the Pareto-front step.)
+   A curve = one build config (HNSW: M; IVF-Flat: c; IVF-PQ: c, m) swept over its search
+   parameter. Area = trapezoid area of log10(QPS) over recall, using only points with
+   recall >= 0.5 (sorted by recall). Higher area = better trade-off.
+12. `curve_area(recalls, qps)`.
+13. `best_at_recall(records, target)` -> highest-QPS record with recall >= target, or None
+    (flag). Used for the QPS@0.9/0.95 table and the build-cost table.
+14. `top_build_configs(records, n)` -> the n build configs with the largest curve area.
+    Used to pick which curve per index goes on the recall-QPS plot (best 1) and which
+    configs go into the scaling run (best 3, search parameter re-swept at each size).
 
 ### F. Compute stage
 15. WIRING: `compute_baseline.py --threads 1` single-query timing under `faiss_threads(1)`,
@@ -99,3 +108,9 @@ Status: approved 2026-10-28 (human: "2 and 3 seem fine", nlist option B). Spec r
 ### I. Glue
 23. `run_all.sh`: append sweeps + scaling to stage 1, new tables/plots to stage 2.
 24. README: new pipeline steps, outputs, runtimes.
+
+Status 2026-10-28 (late): steps 18-24 written in one go at human request ("these will not
+have exact tests anyway, just give me the code at once"): tables (qps_at_recall,
+build_cost, scaling) + sweeps.points without unit tests; compute_scaling.py; plots in
+make_report.py; run_all.sh stage 1 extended; README updated. Verified on --quick data only.
+Full sweep + full scaling NOT run (human: "don't run the full sweep for now").

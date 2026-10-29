@@ -22,7 +22,10 @@ cd "$(dirname "$0")/.."
 
 # ---- Stage 1: compute (reads data/, writes results/<mode>/*.json) ----
 if [[ "$REPORT_ONLY" == 0 ]]; then
-    uv run python src/compute_baseline.py $QUICK
+    uv run python src/compute_baseline.py $QUICK            # baseline check (default threads)
+    uv run python src/compute_baseline.py $QUICK --threads 1 --k-search 20  # exact ANN point
+    uv run python src/compute_sweeps.py $QUICK              # HNSW / IVF-Flat / IVF-PQ sweeps
+    uv run python src/compute_scaling.py $QUICK             # needs the two lines above
 fi
 
 # ---- Stage 2: report (reads results/ only, writes tables and figures) ----

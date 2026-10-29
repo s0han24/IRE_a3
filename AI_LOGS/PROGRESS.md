@@ -14,8 +14,8 @@ Status: todo / in progress / done / superseded (keep superseded rows; don't dele
 | "Datasets:" (9, edit 2): normalise all, euclidean throughout | superseded | line 9 edited again |
 | "Datasets:" (9): normalise GloVe only; euclidean throughout | done | prepare_vectors in pipeline; GloVe agreement True on full run |
 | "Baseline:" (12): FAISS exact search as reference | done | FaissExact (IndexFlatL2, plain L2) used in compute_baseline.py |
-| "Baseline:" (13): recall@10 from scratch, ties at 10th not misses, unit-tested | done | recall_at_k + unit tests (no ties, float-noise ties); used for ANN later |
+| "Baseline:" (13): recall@10 from scratch, ties at 10th not misses, unit-tested | done | recall_at_k reworked 2026-10-28: ties on found side (found_ids, found_dists, gt_ids, k) |
 | "Baseline:" (14): exact search agrees with stored neighbours (sets, tie-aware) | done | full run 2026-10-26: agree True on all 10000 queries, SIFT and GloVe |
 | "Baseline:" (15): time exact search single-query and batch | done | full run: batch + one-at-a-time on 5000 report queries -> results/full/baseline.json |
-| "Benchmarks:" (17-25) | todo | plan 2026-10-28-benchmarks.md (proposed); ambiguities resolved 2026-10-28 |
-| "Experiments on standard data:" (27-35) | todo | plan 2026-10-28-benchmarks.md; hypothesis to README + first git commit before experiment code |
+| "Benchmarks:" (17-25) | in progress | steps 1-24 written; quick mode end-to-end (sweeps, tables, plot, flags for IVF-PQ); full sweep not run yet (human) |
+| "Experiments on standard data:" (27-35) | in progress | hypothesis in README (commit 213015d); compute_scaling.py + scaling table/plot written, quick (100k only) OK; full 100k/300k/1M not run |

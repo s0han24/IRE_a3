@@ -1,5 +1,7 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 
+import faiss
 import numpy as np
 from numpy.typing import NDArray
 
@@ -33,3 +35,23 @@ def time_one_at_a_time(
         search_fn(queries[i : i + 1])
         latencies[i] = clock() - t0
     return latencies
+
+
+@contextmanager
+def faiss_threads(n: int) -> Iterator[None]:
+    """Run the block with FAISS (OpenMP) at n threads; restore the old count after."""
+    before = faiss.omp_get_max_threads()
+    faiss.omp_set_num_threads(n)
+    try:
+        yield
+    finally:
+        faiss.omp_set_num_threads(before)
+
+
+def time_build[T](
+    build_fn: Callable[[], T], clock: Callable[[], float]
+) -> tuple[T, float]:
+    """Call build_fn once (e.g. train + add an index). Returns (its result, seconds)."""
+    t0 = clock()
+    result = build_fn()
+    return result, clock() - t0

@@ -11,6 +11,5 @@ wheels/
 # Virtual environments
 .venv
 
-# Datasets
+# Datasets (~1 GB, re-downloaded by the pipeline). results/ is committed.
 data/
-results/

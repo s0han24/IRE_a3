@@ -32,8 +32,11 @@ bash run_all.sh --quick    # first 100,000 base vectors per dataset
 
 | mode | base vectors | output | time on a laptop (M-series, 8 cores) |
 |---|---|---|---|
-| `--quick` | first 100,000 of each dataset | `results/quick/` | ~5 min on the first run (most of it is the ~1 GB download), ~20 s afterwards |
-| full | 1,000,000 (SIFT), 1,183,514 (GloVe) | `results/full/` | ~3–4 min once the data is downloaded |
+| `--quick` | first 100,000 of each dataset | `results/quick/` | ~4 min once the data is downloaded (first run adds the ~1 GB download) |
+| full | 1,000,000 (SIFT), 1,183,514 (GloVe) | `results/full/` | **not yet measured**; estimated ~1 h (baselines ~8 min, sweeps ~30–45 min, scaling ~15 min) |
+
+`--quick` runs the same experiments with smaller sweep grids, and the scaling experiment at
+100k vectors only.
 
 Other options:
 
@@ -48,10 +51,9 @@ The script can be run from any directory: it switches to the repo root itself, s
 ## The pipeline
 
 `src/run_all.sh` runs two stages. New experiments are added by appending their commands to the
-matching stage block in that file.
+matching stage block in that file. Stage 1 is the only stage that reads `data/` or uses FAISS.
 
-**Stage 1: compute** (`src/compute_baseline.py`). This is the only stage that reads `data/` or
-uses FAISS. For each dataset it:
+**Stage 1a: exact baseline** (`src/compute_baseline.py`). For each dataset it:
 
 1. downloads `<name>.hdf5` from ann-benchmarks into `data/` if it isn't there yet. The file is
    written to `<name>.hdf5.part` and renamed when complete, so an interrupted download is never
@@ -69,7 +71,23 @@ uses FAISS. For each dataset it:
 8. times search on the 5,000 report queries, once as a single batch and once one query at a
    time, after one untimed warm-up query.
 
-It writes `results/<mode>/baseline.json`:
+It writes `results/<mode>/baseline.json`. Run with `--threads 1 --k-search 20`, it instead
+writes `results/<mode>/baseline_1thread.json`, which never overwrites `baseline.json`.
+
+> **Thread count of the one-query-at-a-time numbers.** The two baseline files time single
+> queries differently, so don't compare them directly:
+>
+> - `baseline.json` is the baseline check: single queries run with FAISS's default thread
+>   count (all cores, 8 here), searching for k = 10. FAISS can spread even one query's flat
+>   scan across threads, so these latencies are *not* single-threaded.
+> - `baseline_1thread.json` is restricted to 1 FAISS thread during single-query timing and
+>   searches for k' = 20 (recall@10 needs the extra results to handle ties). The ANN
+>   benchmarks time single queries the same way, and this is the exact-search point plotted
+>   against HNSW / IVF-Flat / IVF-PQ.
+>
+> Batch timing always uses the default thread count. The 1-thread single-query exact search
+> was about 1.25x slower than the default-thread one on the 100k subset, and about 1.1-1.15x
+> slower on the full data (SIFT 49 vs 57 QPS, GloVe 49 vs 54).
 
 ```json
 {
@@ -86,6 +104,35 @@ It writes `results/<mode>/baseline.json`:
 }
 ```
 
+**Stage 1b: ANN sweeps** (`src/compute_sweeps.py`, FAISS `IndexHNSWFlat`, `IndexIVFFlat`,
+`IndexIVFPQ`). For each dataset it computes the exact top-10 of every query, then builds each
+index config once (build time and serialised size recorded) and sweeps its search parameter:
+
+| index | build configs, full (quick) | search sweep |
+|---|---|---|
+| HNSW | M ∈ {16, 32} ({16}), efConstruction 200 | efSearch 32 … 512 |
+| IVF-Flat | c ∈ {1, 4} ({1}) | nprobe 1 … 128 |
+| IVF-PQ | c = 4 (1), m ∈ {d/2, d/4} ({d/2}), 8 bits | nprobe 1 … 256 |
+
+IVF uses `nlist = round(c · √n)`. For every search value it records recall@10 on the tuning
+queries (used only to choose configs), recall@10 on the report queries, and the latency of
+each report query run one at a time on 1 FAISS thread (after an untimed warm-up). Every search
+returns k' = 20 results. Output: `results/<mode>/sweeps.json`. An index with no config reaching
+recall@10 ≥ 0.95 is flagged on stdout and in the tables (IVF-PQ without re-ranking plateaus
+below it, around 0.87–0.89 on the 100k subsets).
+
+**Recall@10** (`annbench.recall.recall_at_k`): a returned id counts if its reported distance is
+≤ the 10th returned distance (with a 1e-5 relative tolerance), so an index's arbitrary order
+among ties at the 10th place cannot hide a true neighbour; recall = |exact top-10 ∩ counted
+ids| / 10. IVF-PQ reports approximate distances, so its ties are judged on those.
+
+**Stage 1c: scaling** (`src/compute_scaling.py`, SIFT only). The 3 best build configs per index
+for HNSW and IVF-Flat, ranked by the area under log10(QPS) vs tuning-query recall (recall ≥ 0.5),
+are re-run with their full search sweep at 100k, 300k and 1M base vectors (quick: 100k), plus
+exact search. IVF's `nlist` follows `c · √n` at each size. Measurements that already exist at a
+size (the sweep at its own base size, the 1-thread baseline) are reused. Output:
+`results/<mode>/scaling.json`.
+
 Stage 1 stores only raw measurements. Every derived number, such as QPS and the latency
 percentiles, is computed in stage 2.
 
@@ -94,7 +141,20 @@ on its own with `--report-only`. It writes:
 
 - `results/<mode>/tables/baseline.md`: dataset, n_base, agreement, batch time, batch QPS,
   single-query QPS (queries / total one-at-a-time time), and p50/p95/p99 single-query latency;
-- `results/<mode>/figures/baseline_latency_ecdf.png`: the distribution of single-query latency.
+- `results/<mode>/tables/baseline_1thread.md`: the same table for `baseline_1thread.json`,
+  if it exists;
+- `results/<mode>/figures/baseline_latency_ecdf.png`: the distribution of single-query latency;
+- `results/<mode>/tables/qps_at_recall.md`: per dataset and index, the best single-query QPS
+  reaching recall@10 0.9 and 0.95, with that config named ("not reached" if none does);
+- `results/<mode>/tables/build_cost_at_0.95.md`: build time, index size and bytes per vector of
+  each index's best config at recall 0.95 (or its highest-recall config, flagged);
+- `results/<mode>/figures/recall_vs_qps.png`: recall@10 against single-query QPS per dataset,
+  showing each index's best build config (by curve area) and the exact baseline;
+- `results/<mode>/tables/scaling.md` and `figures/scaling_qps_at_0.95.png`: per base size, the
+  cheapest config of each index reaching recall 0.95.
+
+Selection (which build is plotted, which configs are scaled) uses tuning-query recall; every
+reported recall and QPS is on the report queries.
 
 `data/` and `results/` are git-ignored.
 
@@ -108,9 +168,12 @@ on its own with `--report-only`. It writes:
 | `src/annbench/agreement.py` | `neighbours_agree`: tie-aware check against stored neighbours |
 | `src/annbench/timing.py` | batch and one-at-a-time timing with an injectable clock |
 | `src/annbench/metrics.py` | `latency_summary` (p50/p95/p99/mean), `qps` |
+| `src/annbench/indexes.py` | `FaissHNSW`, `FaissIVFFlat`, `FaissIVFPQ` (same interface), `index_size_bytes` |
+| `src/annbench/sweeps.py` | `curve_area`, `best_at_recall`, `top_build_configs`, `points` |
 | `src/annbench/tables.py` | markdown tables from result records |
 | `src/annbench/results_io.py` | results JSON save/load, run metadata |
-| `src/compute_baseline.py`, `src/make_report.py` | stage 1 / stage 2 entry points (wiring only) |
+| `src/compute_baseline.py`, `compute_sweeps.py`, `compute_scaling.py` | stage 1 entry points (wiring only) |
+| `src/make_report.py` | stage 2 entry point (wiring only) |
 | `tests/` | one test file per module |
 
 ## Development
