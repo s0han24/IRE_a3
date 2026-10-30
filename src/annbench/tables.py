@@ -115,3 +115,131 @@ def scaling_table(pts: list[dict], target: float = 0.95) -> str:
             f"| {best['qps']:.0f} | {p50:.2f} |"
         )
     return "\n".join(lines) + "\n"
+
+
+def _setting_label(r: dict) -> str:
+    return "-" if r["setting"] is None else str(r["setting"])
+
+
+def drift_config_table(records: list[dict]) -> str:
+    """Every config of one drift kind: both recalls, QPS, build time, size, bytes/vec.
+
+    records: drift records (clean + stale + rebuilt). Stale rows reuse the clean index,
+    so their build time and size are the clean index's (marked "reused").
+    """
+    lines = [
+        "| condition | setting | config | recall (own) | recall (original) | QPS "
+        "| build s | size MB | bytes/vector |",
+        "|---|---|---|---|---|---|---|---|---|",
+    ]
+    order = {"clean": 0, "stale": 1, "rebuilt": 2}
+    rows = sorted(
+        records,
+        key=lambda r: (
+            order[r["condition"]],
+            -1 if r["setting"] is None else r["setting"],
+            INDEX_ORDER.index(r["index"]),
+            r["build"],
+            -1 if r["search_value"] is None else r["search_value"],
+        ),
+    )
+    for r in rows:
+        lat = r["latencies_s"]
+        if r["size_bytes"] is None:
+            build = size = per_vec = "-"
+        else:
+            reused = " (reused)" if r["build_reused"] else ""
+            build = f"{r['build_seconds']:.1f}{reused}"
+            size = f"{r['size_bytes'] / 1e6:.1f}"
+            per_vec = f"{r['size_bytes'] / r['n_base']:.1f}"
+        lines.append(
+            f"| {r['condition']} | {_setting_label(r)} | {_config(r)} "
+            f"| {r['report_recall_own']:.3f} | {r['report_recall_original']:.3f} "
+            f"| {qps(len(lat), sum(lat)):.0f} | {build} | {size} | {per_vec} |"
+        )
+    return "\n".join(lines) + "\n"
+
+
+def drift_drop_table(records: list[dict], target: float = 0.95) -> str:
+    """Recall drop per config vs clean, and where each index first loses a 0.95 config.
+
+    Drops are (stale - clean) and (rebuilt - clean) for both recalls. "Loses 0.95" uses
+    recall (original): the first setting, in increasing drift strength, at which the
+    index has no config with recall (original) >= target.
+    """
+    clean = {
+        (r["build"], r["search_value"]): r for r in records if r["condition"] == "clean"
+    }
+    settings = sorted({r["setting"] for r in records if r["setting"] is not None})
+    lines = [
+        "| setting | config | clean recall | stale - clean (original) "
+        "| stale - clean (own) | rebuilt - clean (original) | rebuilt - clean (own) |",
+        "|---|---|---|---|---|---|---|",
+    ]
+    for s in settings:
+        drifted = {
+            (r["condition"], r["build"], r["search_value"]): r
+            for r in records
+            if r["setting"] == s
+        }
+        for key in sorted(clean, key=lambda k: (k[0], -1 if k[1] is None else k[1])):
+            c = clean[key]
+            cells = []
+            for cond in ("stale", "rebuilt"):
+                d = drifted[(cond, *key)]
+                for rk in ("report_recall_original", "report_recall_own"):
+                    cells.append(f"{d[rk] - c['report_recall_original']:+.3f}")
+            lines.append(
+                f"| {s} | {_config(c)} | {c['report_recall_original']:.3f} | "
+                + " | ".join(cells)
+                + " |"
+            )
+
+    lines += [
+        "",
+        f"First setting at which each index has no config with recall (original) "
+        f">= {target}:",
+        "",
+        "| index | clean | stale | rebuilt |",
+        "|---|---|---|---|",
+    ]
+    first: dict[str, list[tuple[float, str]]] = {"stale": [], "rebuilt": []}
+    for index in INDEX_ORDER:
+        mine = [r for r in records if r["index"] == index]
+        if not mine:
+            continue
+        cells = []
+        has_clean = any(
+            r["report_recall_original"] >= target
+            for r in mine
+            if r["condition"] == "clean"
+        )
+        cells.append("has 0.95" if has_clean else "**never reached**")
+        for cond in ("stale", "rebuilt"):
+            lost = next(
+                (
+                    s
+                    for s in settings
+                    if not any(
+                        r["report_recall_original"] >= target
+                        for r in mine
+                        if r["condition"] == cond and r["setting"] == s
+                    )
+                ),
+                None,
+            )
+            if not has_clean:
+                cells.append("n/a")
+                continue
+            if lost is not None:
+                first[cond].append((lost, index))
+            cells.append("kept at all settings" if lost is None else f"lost at {lost}")
+        lines.append(f"| {index} | " + " | ".join(cells) + " |")
+    for cond in ("stale", "rebuilt"):
+        if first[cond]:
+            s = min(first[cond])[0]
+            who = ", ".join(i for t, i in first[cond] if t == s)
+            lines.append(f"\n**{cond}: first to lose its 0.95 config: {who} (at {s})**")
+        else:
+            lines.append(f"\n**{cond}: no index that had a 0.95 config lost it**")
+    return "\n".join(lines) + "\n"

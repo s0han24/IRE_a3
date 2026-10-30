@@ -19,6 +19,8 @@ from annbench.sweeps import best_at_recall, points, top_build_configs  # noqa: E
 from annbench.tables import (  # noqa: E402
     baseline_table,
     build_cost_table,
+    drift_config_table,
+    drift_drop_table,
     qps_at_recall_table,
     scaling_table,
 )
@@ -150,6 +152,81 @@ def plot_scaling(pts: list[dict], out_path: Path, target: float = 0.95) -> None:
     plt.close(fig)
 
 
+CONDITION_STYLE = {  # condition -> (color, marker, linestyle) in the drift plots
+    "clean": (SERIES[0], "o", "-"),
+    "stale": (SERIES[1], "s", "--"),
+    "rebuilt": (SERIES[2], "^", ":"),
+}
+
+
+def plot_drift(records: list[dict], kind: str, out_path: Path) -> None:
+    """Per index: clean, stale and rebuilt curves at the strongest drift setting.
+
+    y = recall (original), i.e. against the original queries' true neighbours. One build
+    per index: the best by clean tune-recall curve area. Exact search is a star per
+    condition. Every setting and config is in the drift tables.
+    """
+    strongest = max(r["setting"] for r in records if r["setting"] is not None)
+    shown = [r for r in records if r["setting"] in (None, strongest)]
+    pts = points(shown, "report_recall_original")
+    indexes = [
+        i for i in ("hnsw", "ivf_flat", "ivf_pq") if any(p["index"] == i for p in pts)
+    ]
+    fig, axes = plt.subplots(
+        1, len(indexes), figsize=(5 * len(indexes), 4.2), dpi=150, sharey=True
+    )
+    for ax, index in zip(np.atleast_1d(axes), indexes, strict=True):
+        clean = [
+            r for r in records if r["index"] == index and r["condition"] == "clean"
+        ]
+        best = top_build_configs(points(clean, "tune_recall_own"), 1)[0]
+        for cond, (color, marker, ls) in CONDITION_STYLE.items():
+            curve = sorted(
+                (p for p in pts if p["build"] == best and p["condition"] == cond),
+                key=lambda p: p["search_value"],
+            )
+            label = cond if cond == "clean" else f"{cond} ({kind} {strongest})"
+            ax.plot(
+                [p["qps"] for p in curve],
+                [p["recall"] for p in curve],
+                color=color,
+                marker=marker,
+                linestyle=ls,
+                linewidth=2,
+                markersize=5,
+                label=label,
+            )
+            for p in pts:
+                if p["index"] == "exact" and p["condition"] == cond:
+                    ax.plot(
+                        p["qps"],
+                        p["recall"],
+                        color=color,
+                        marker="*",
+                        markersize=12,
+                        linestyle="none",
+                    )
+        ax.axhline(0.95, color=MUTED, linewidth=0.8, linestyle=":")
+        ax.set_xscale("log")
+        ax.xaxis.set_minor_formatter(plt.NullFormatter())  # minor labels collide
+        style_axes(
+            ax,
+            f"{best} (stars: exact search)",
+            "queries per second, 1 thread (log scale)",
+            "recall@10 vs original neighbours",
+        )
+    fig.suptitle(
+        f"SIFT, {kind} drift: clean vs stale vs rebuilt (report queries)",
+        x=0.01,
+        ha="left",
+        color=INK,
+        fontsize=11,
+    )
+    fig.tight_layout()
+    fig.savefig(out_path)
+    plt.close(fig)
+
+
 def plot_latency_ecdf(records: list[dict], out_path: Path) -> None:
     """One-at-a-time exact-search latency ECDF, one line per dataset."""
     fig, ax = plt.subplots(figsize=(7, 4), dpi=150)
@@ -221,6 +298,22 @@ def main() -> None:
         (tables_dir / "scaling.md").write_text(text)
         print("scaling", text, sep="\n")
         plot_scaling(pts, figures_dir / "scaling_qps_at_0.95.png")
+
+    # Drift experiments (spec "Experiments on drifted data:").
+    for path in sorted(mode_dir.glob("drift_*.json")):
+        kind = path.stem.removeprefix("drift_")
+        records = load_results(path)[0]
+        for name, text in (
+            (f"drift_{kind}_configs", drift_config_table(records)),
+            (f"drift_{kind}_drop", drift_drop_table(records)),
+        ):
+            (tables_dir / f"{name}.md").write_text(text)
+        print(
+            f"drift_{kind}_drop",
+            drift_drop_table(records).split("\n\n", 1)[-1],
+            sep="\n",
+        )
+        plot_drift(records, kind, figures_dir / f"drift_{kind}.png")
 
 
 if __name__ == "__main__":

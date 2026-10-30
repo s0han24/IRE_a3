@@ -38,7 +38,7 @@ Run from `src/` (the script switches to the repo root, so `data/` and `results/`
 ```bash
 cd src
 bash run_all.sh                         # full datasets, ~55 min on an M-series laptop
-bash run_all.sh --quick                 # first 100,000 base vectors, ~5 min
+bash run_all.sh --quick                 # first 100,000 base vectors, ~13 min
 bash run_all.sh --report-only           # re-make tables/figures from existing results
 bash run_all.sh --quick --report-only
 ```
@@ -61,6 +61,8 @@ the matching block.
      (`sweeps.json`).
    - `compute_scaling.py`: SIFT at 100k / 300k / 1M (quick: 100k) for every HNSW and
      IVF-Flat config plus exact search (`scaling.json`).
+   - `compute_drift.py`: SIFT mean-shift and rotation drift, stale vs rebuilt indexes,
+     300k base (quick: 50k) (`drift_mean_shift.json`, `drift_rotation.json`).
 2. **Report** (`make_report.py`, reads `results/` only): markdown tables and PNG figures.
 
 ## Code layout
