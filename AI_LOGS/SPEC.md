@@ -62,3 +62,5 @@ Simulate a change in preprocessing that the index was not rebuilt for, and see w
     2. a table of every config with all the numbers above
     3. a table of the recall drop per config (stale minus clean, rebuilt minus clean) and which index loses its 0.95 config first
 - Add to run_all.sh, including the --quick mode
+
+- run_all.sh should be in code/

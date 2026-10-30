@@ -1,7 +1,7 @@
 """Stage 1 (compute): HNSW / IVF-Flat / IVF-PQ sweeps -> results/<mode>/sweeps.json.
 
 Wiring only; every piece it calls is unit-tested in annbench.
-Usage: uv run python src/compute_sweeps.py [--quick]
+Usage: uv run python code/src/compute_sweeps.py [--quick]
 
 Per dataset and build config: build once (timed, sized), then per search parameter:
   - tune recall@10: batch search of the 5000 tuning queries (used to pick configs);

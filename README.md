@@ -33,12 +33,12 @@ uv sync
 
 ## Running
 
-Run from `src/` (the script switches to the repo root, so `data/` and `results/` sit there):
+Run from `code/` (the script first switches to the repo root, so `data/` and `results/` sit there):
 
 ```bash
-cd src
-bash run_all.sh                         # full datasets, ~55 min on an M-series laptop
-bash run_all.sh --quick                 # first 100,000 base vectors, ~13 min
+cd code
+bash run_all.sh                         # full datasets
+bash run_all.sh --quick                 # first 100,000 base vectors
 bash run_all.sh --report-only           # re-make tables/figures from existing results
 bash run_all.sh --quick --report-only
 ```
@@ -49,7 +49,7 @@ Outputs go to `results/full/` or `results/quick/` (`*.json` raw measurements, `t
 
 ## Pipeline
 
-`src/run_all.sh` runs two stages; new experiments are added by appending their commands to
+`code/run_all.sh` runs two stages; new experiments are added by appending their commands to
 the matching block.
 
 1. **Compute** (reads `data/`, writes `results/<mode>/*.json`):
@@ -69,19 +69,20 @@ the matching block.
 
 | path | contents |
 |---|---|
-| `src/annbench/data.py` | download, HDF5 loading, query split, normalisation, `--quick` subset |
-| `src/annbench/exact.py` | `FaissExact`: `build(base)` / `search(queries, k) -> (ids, dists)` |
-| `src/annbench/indexes.py` | `FaissHNSW`, `FaissIVFFlat`, `FaissIVFPQ` (same interface), `index_size_bytes` |
-| `src/annbench/recall.py` | `recall_at_k` with tie handling at the k-th place |
-| `src/annbench/agreement.py` | `neighbours_agree`: tie-aware check against stored neighbours |
-| `src/annbench/timing.py` | batch / one-at-a-time / build timing, `faiss_threads` |
-| `src/annbench/metrics.py` | `latency_summary`, `qps` |
-| `src/annbench/sweeps.py` | `curve_area`, `best_at_recall`, `top_build_configs`, `points` |
-| `src/annbench/tables.py` | markdown tables from result records |
-| `src/annbench/results_io.py` | results JSON save/load, run metadata |
-| `src/compute_*.py`, `src/make_report.py` | stage entry points (wiring only) |
-| `src/run_all.sh` | the full pipeline |
-| `tests/` | one test file per module |
+| `code/src/annbench/data.py` | download, HDF5 loading, query split, normalisation, `--quick` subset |
+| `code/src/annbench/exact.py` | `FaissExact`: `build(base)` / `search(queries, k) -> (ids, dists)` |
+| `code/src/annbench/indexes.py` | `FaissHNSW`, `FaissIVFFlat`, `FaissIVFPQ` (same interface), `index_size_bytes` |
+| `code/src/annbench/recall.py` | `recall_at_k` with tie handling at the k-th place |
+| `code/src/annbench/agreement.py` | `neighbours_agree`: tie-aware check against stored neighbours |
+| `code/src/annbench/timing.py` | batch / one-at-a-time / build timing, `faiss_threads` |
+| `code/src/annbench/metrics.py` | `latency_summary`, `qps` |
+| `code/src/annbench/sweeps.py` | `curve_area`, `best_at_recall`, `top_build_configs`, `points` |
+| `code/src/annbench/tables.py` | markdown tables from result records |
+| `code/src/annbench/results_io.py` | results JSON save/load, run metadata |
+| `code/src/annbench/drift.py` | mean-shift and pairwise-rotation transforms |
+| `code/src/compute_*.py`, `code/src/make_report.py` | stage entry points (wiring only) |
+| `code/run_all.sh` | the full pipeline |
+| `code/tests/` | one test file per module |
 
 ## Development
 

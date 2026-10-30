@@ -1,7 +1,7 @@
 """Stage 2 (report): results/<mode>/*.json -> tables/ and figures/.
 
 Reads results/ only (never data/ or FAISS). Wiring only; logic is tested in annbench.
-Usage: uv run python src/make_report.py [--quick]
+Usage: uv run python code/src/make_report.py [--quick]
 """
 
 import argparse

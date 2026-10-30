@@ -1,13 +1,14 @@
 # Progress
 
-Spec read up to: line 64
+Spec read up to: line 66
 
 Agents update this after each GREEN or REFACTOR step and after each confirmed spec update.
 Status: todo / in progress / done / superseded (keep superseded rows; don't delete them).
 
 | Spec item (heading, lines) | Status | Notes |
 |---|---|---|
-| "IMPORTANT" (4): src/run_all.sh + --quick (<15 min), README how-to + pipeline description | in progress | run_all.sh full ran 2026-10-29 (~28 min, single timings); needs re-run with 3 repeats; --quick end-to-end not yet timed |
+| "IMPORTANT" (4): src/run_all.sh + --quick (<15 min), README how-to + pipeline description | superseded | location overridden by line 66 |
+| "IMPORTANT" (4) + line 66: code/run_all.sh + --quick (<15 min), README how-to + pipeline description | in progress | moved to code/run_all.sh 2026-10-30; --quick end-to-end not yet timed |
 | "Datasets:" (7): SIFT + GloVe-100 from ann-benchmarks | done | plan F done; both files downloaded and used in full + quick runs |
 | "Datasets:" (8): queries split tune [:5000] / report [5000:] | done | plan B6; split_queries in data.py |
 | "Datasets:" (9, original): l2-normalise euclidean benchmarks, use cosine | superseded | line 9 edited in place |

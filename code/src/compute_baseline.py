@@ -1,7 +1,7 @@
 """Stage 1 (compute): exact FAISS baseline -> results/<mode>/baseline.json.
 
 Wiring only; every piece it calls is unit-tested in annbench.
-Usage: uv run python src/compute_baseline.py [--quick]
+Usage: uv run python code/src/compute_baseline.py [--quick]
 """
 
 import argparse

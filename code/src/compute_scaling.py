@@ -1,7 +1,7 @@
 """Stage 1 (compute): SIFT scaling experiment -> results/<mode>/scaling.json.
 
 Wiring only. Needs results/<mode>/sweeps.json and baseline_1thread.json first.
-Usage: uv run python src/compute_scaling.py [--quick]
+Usage: uv run python code/src/compute_scaling.py [--quick]
 
 Every HNSW and IVF-Flat build config from the sweep (spec line 36: all configs) is
 re-run at each base size (full: 100k / 300k / 1M; quick: 100k), with its whole

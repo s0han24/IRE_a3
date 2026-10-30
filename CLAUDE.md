@@ -162,7 +162,7 @@ The project is in Python and is managed with [`uv`](https://docs.astral.sh/uv/).
 
 Conventions:
 
-- The layout is `src/annbench/` for code and `tests/` for tests, with one test file per module (`src/annbench/recall.py` → `tests/test_recall.py`).
+- The layout is `code/src/annbench/` for code and `code/tests/` for tests, with one test file per module (`code/src/annbench/recall.py` → `code/tests/test_recall.py`).
 - Add type hints to every public function. Use `numpy.typing.NDArray` for arrays, and document shapes and dtypes in the docstring (e.g. `(n, d) float32`).
 - Run `ruff check` and `ruff format` before every STOP. Formatting-only changes to lines you didn't touch don't count toward the step.
 - Prefer NumPy vectorised code over Python loops in anything that touches vectors.

@@ -1,7 +1,7 @@
 """Stage 1 (compute): drift experiments on SIFT -> results/<mode>/drift_<kind>.json.
 
 Wiring only; every piece it calls is unit-tested in annbench.
-Usage: uv run python src/compute_drift.py [--quick]
+Usage: uv run python code/src/compute_drift.py [--quick]
 
 Base: first 300k SIFT vectors (quick: 50k). Two drift kinds, never combined:
 mean shift (c = 5, 10, 15; quick: 10) and pairwise rotation (2, 3, 5 degrees; quick: 5).
